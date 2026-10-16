@@ -225,6 +225,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
       <div class="g-track"><div class="g-fill" id="goalBar" style="width:0%"></div></div>
     </div>
     <div class="quick" id="quickBar"></div>
+    <div class="seg mini" id="homeSeg"><button data-m="all" class="on">全部</button><button data-m="expense">支出</button><button data-m="income">收入</button></div>
     <div id="monthTree"></div>
   </div>
 
@@ -244,7 +245,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
   </div>
 
   <div id="tab-year" class="tab hidden">
-    <div class="app-top"><h1 class="app-title">📅 年度账单</h1><div class="top-btns"><button class="btn" id="btnEye" title="显示/隐藏金额">🙈</button></div></div>
+    <div class="app-top"><h1 class="app-title">📅 年度账单</h1></div>
     <div class="year-nav">
       <button class="year-btn" id="prevYear">‹</button>
       <div class="year-txt" id="yearLabel"></div>
@@ -256,6 +257,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
     <div class="card"><div class="section-title">全年收支（按月）</div><div class="seg mini" id="yearSeg"><button data-m="both" class="on">收支</button><button data-m="expense">支出</button><button data-m="income">收入</button></div><div id="yearBars"></div></div>
     <div class="card"><div class="section-title">全年支出分类</div><div id="yearCats"></div></div>
     <div class="card"><div class="section-title">月度明细</div><div id="yearTable"></div></div>
+    <div style="margin-top:6px"><button class="btn" id="btnEye" style="width:100%;padding:12px;font-size:15px">🙈 显示金额</button></div>
   </div>
   <div id="tab-settings" class="tab hidden">
     <div class="app-top"><h1 class="app-title">⚙️ 设置</h1></div>
@@ -267,8 +269,8 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
       </div>
     </div>
         <div class="card"><div class="section-title">金额隐私</div>
-      <div class="privacy-row"><span>隐藏金额（防偷看）</span><label class="switch"><input type="checkbox" id="hideToggle"><span class="slider"></span></label></div>
-      <p class="note-text" style="margin-top:10px">开启后，年度账单的金额会模糊显示；点右上角 👁 或本开关即可显示。</p>
+      <div class="privacy-row"><span>隐藏金额</span><label class="switch"><input type="checkbox" id="hideToggle"><span class="slider"></span></label></div>
+      <p class="note-text" style="margin-top:10px">开启后，年度账单的金额会模糊显示；点年度页底部的按钮或本开关即可显示。</p>
     </div>
     <div class="card"><div class="section-title">每月结余目标</div>
       <div class="seg-row"><input class="input" type="text" inputmode="decimal" id="goalInput" placeholder="如 2000（0 表示不设目标）"><button class="btn btn-primary" id="btnGoalSave">保存</button></div>
@@ -356,6 +358,7 @@ var db=null,key=null,records=[],settings={theme:'auto',goal:0,customCats:{expens
 var cur='',editingId=null,editingBase=0,type='expense',activeTab='home';
 var year=String(new Date().getFullYear());
 var trendMode='both',yearMode='both';
+var homeFilter='all';
 var openMonths={};
 function $(id){return document.getElementById(id)}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
@@ -394,7 +397,7 @@ function updateGoal(){renderGoal('',cur);renderGoal('A',cur)}
 function renderGoal(prefix,mk){var box=$('goalBox'+prefix),bar=$('goalBar'+prefix),txt=$('goalText'+prefix);var g=Number(settings.goal)||0;var s=sumsOf(mk);if(g<=0){box.classList.add('hidden');return}box.classList.remove('hidden');var pct=Math.max(0,Math.min(100,Math.round(s.b/g*100)));bar.style.width=pct+'%';txt.textContent=fmt(s.b)+' / '+fmt(g)+(s.b>=g?' · 已达成 🎉':(s.b>=0?' · 还差 '+fmt(g-s.b):' · 当前为负'))}
 function renderCategories(){var sel=$('category');sel.innerHTML=catsOf(type).map(function(c){return '<option value="'+esc(c)+'">'+emojiFor(c)+' '+esc(c)+'</option>'}).join('')}
 function recordRow(r){var sign=r.type==='expense'?'-':'+';var cls=r.type==='expense'?'exp':'inc';var note=r.note?'<div class="note">'+esc(r.note)+'</div>':'';return '<div class="row"><div class="ic">'+emojiFor(r.category)+'</div><div class="mid"><div class="cat">'+esc(r.category)+'</div>'+note+'</div><div class="amt '+cls+'">'+sign+fmt(Number(r.amount))+'</div><div class="op"><button data-act="edit" data-id="'+r.id+'">编辑</button><button class="del" data-act="del" data-id="'+r.id+'">删除</button></div></div>'}
-function renderTree(){var box=$('monthTree');if(records.length===0){box.innerHTML='<div class="empty">还没有任何记录，点右下角 ＋ 记一笔吧 🎉</div>';return}var years={};records.forEach(function(r){var y=r.date.slice(0,4),m=r.date.slice(5,7);if(!years[y])years[y]={};if(!years[y][m])years[y][m]=[];years[y][m].push(r)});var html='';Object.keys(years).sort().reverse().forEach(function(y){html+='<div class="tree-year"><div class="tree-year-head">'+y+' 年</div>';var months=years[y];Object.keys(months).sort().reverse().forEach(function(m){var mk=y+'-'+m;var s=sumsOf(mk);var open=!!openMonths[mk];html+='<div class="tree-month"><button class="tree-month-head" data-mk="'+mk+'"><span class="tm-txt">'+parseInt(m,10)+' 月</span><span class="tm-sum"><span class="c-exp">支 '+fmt(s.e)+'</span> <span class="c-inc">收 '+fmt(s.i)+'</span></span><span class="tm-arrow">'+(open?'▾':'▸')+'</span></button>';if(open){html+='<div class="tree-days">';var days={};months[m].forEach(function(r){if(!days[r.date])days[r.date]=[];days[r.date].push(r)});Object.keys(days).sort().reverse().forEach(function(d){var dl=days[d];var de=0,di=0;dl.forEach(function(r){if(r.type==='expense')de+=Number(r.amount);else di+=Number(r.amount)});var sum=de>0&&di>0?('支 '+fmt(de)+' / 收 '+fmt(di)):(de>0?('支 '+fmt(de)):('收 '+fmt(di)));html+='<div class="day">'+d+'<span class="sum">'+sum+'</span></div>';dl.forEach(function(r){html+=recordRow(r)})});html+='</div>'}html+='</div>'});html+='</div>'});box.innerHTML=html}
+function renderTree(){var box=$('monthTree');var list=(homeFilter==='all')?records:records.filter(function(r){return r.type===homeFilter});if(list.length===0){box.innerHTML=(homeFilter==='all')?'<div class="empty">还没有任何记录，点右下角 ＋ 记一笔吧 🎉</div>':'<div class="empty">该筛选下暂无记录</div>';return}var years={};list.forEach(function(r){var y=r.date.slice(0,4),m=r.date.slice(5,7);if(!years[y])years[y]={};if(!years[y][m])years[y][m]=[];years[y][m].push(r)});var html='';Object.keys(years).sort().reverse().forEach(function(y){html+='<div class="tree-year"><div class="tree-year-head">'+y+' 年</div>';var months=years[y];Object.keys(months).sort().reverse().forEach(function(m){var mk=y+'-'+m;var arr=months[m];var de=0,di=0;arr.forEach(function(r){if(r.type==='expense')de+=Number(r.amount);else di+=Number(r.amount)});var open=!!openMonths[mk];var msum=(homeFilter==='income')?('<span class="c-inc">收 '+fmt(di)+'</span>'):(homeFilter==='expense'?('<span class="c-exp">支 '+fmt(de)+'</span>'):('<span class="c-exp">支 '+fmt(de)+'</span> <span class="c-inc">收 '+fmt(di)+'</span>'));html+='<div class="tree-month"><button class="tree-month-head" data-mk="'+mk+'"><span class="tm-txt">'+parseInt(m,10)+' 月</span><span class="tm-sum">'+msum+'</span><span class="tm-arrow">'+(open?'▾':'▸')+'</span></button>';if(open){html+='<div class="tree-days">';var days={};arr.forEach(function(r){if(!days[r.date])days[r.date]=[];days[r.date].push(r)});Object.keys(days).sort().reverse().forEach(function(d){var dl=days[d];var e2=0,i2=0;dl.forEach(function(r){if(r.type==='expense')e2+=Number(r.amount);else i2+=Number(r.amount)});var dsum=(homeFilter==='income')?('收 '+fmt(i2)):(homeFilter==='expense'?('支 '+fmt(e2)):(e2>0&&i2>0?('支 '+fmt(e2)+' / 收 '+fmt(i2)):(e2>0?('支 '+fmt(e2)):('收 '+fmt(i2)))));html+='<div class="day">'+d+'<span class="sum">'+dsum+'</span></div>';dl.forEach(function(r){html+=recordRow(r)})});html+='</div>'}html+='</div>'});html+='</div>'});box.innerHTML=html}
 function openModal(){$('editModal').classList.remove('hidden')}
 function closeModal(){$('editModal').classList.add('hidden');resetForm()}
 function newRecord(){editingId=null;editingBase=0;type='expense';setType(type);$('editTitle').textContent='记一笔';$('btnSave').textContent='保存';$('amountHint').classList.add('hidden');$('amountPrev').classList.add('hidden');$('amount').value='';$('note').value='';$('date').value=todayStr();openModal();setTimeout(function(){$('amount').focus()},60)}
@@ -502,12 +505,13 @@ $('newQType').addEventListener('change',renderQuickCat);
 $('quickBar').addEventListener('click',function(e){var b=e.target.closest('button[data-qi]');if(!b)return;var i=parseInt(b.getAttribute('data-qi'),10);var x=(settings.quick||[])[i];if(x)quickOpen(x)});
 $('quickList').addEventListener('click',function(e){var b=e.target.closest('button[data-qi]');if(!b)return;var i=parseInt(b.getAttribute('data-qi'),10);(settings.quick||[]).splice(i,1);saveDb().then(function(){renderSettings();renderQuick()})});
 function mk(){return settings.hide?' mask':''}
-function updateEye(){var b=$('btnEye');if(b)b.textContent=settings.hide?'🙈':'👁'}
+function updateEye(){var b=$('btnEye');if(b)b.textContent=settings.hide?'🙈 显示金额':'👁 隐藏金额'}
 function updateSeg(seg,m){var bs=seg.querySelectorAll('button');for(var i=0;i<bs.length;i++){bs[i].classList.toggle('on',bs[i].getAttribute('data-m')===m)}}
 $('trendSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;trendMode=b.getAttribute('data-m');updateSeg($('trendSeg'),trendMode);renderTrend3()});
 $('yearSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;yearMode=b.getAttribute('data-m');updateSeg($('yearSeg'),yearMode);renderYearBars2()});
 $('btnEye').addEventListener('click',function(){settings.hide=!settings.hide;saveDb().then(function(){renderYear();renderSettings()})});
 $('hideToggle').addEventListener('change',function(){settings.hide=this.checked;saveDb().then(function(){renderYear();renderSettings()})});
+$('homeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;homeFilter=b.getAttribute('data-m');updateSeg($('homeSeg'),homeFilter);renderTree()});
 if(!window.crypto||!crypto.subtle){$('cryptoWarn').classList.remove('hidden')}
 if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){})})}
 try{var mq=window.matchMedia('(prefers-color-scheme: dark)');if(mq.addEventListener)mq.addEventListener('change',function(){if((localStorage.getItem(THEMEKEY)||'auto')==='auto')applyTheme()})}catch(e){}
