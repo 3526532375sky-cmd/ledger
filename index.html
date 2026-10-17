@@ -27,7 +27,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
 #screen-main{max-width:600px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:0;overflow:hidden}
 .pages{flex:1;overflow:hidden;position:relative;width:100%}
 .pages-strip{display:flex;height:100%;width:400%;transform:translateX(0);will-change:transform;touch-action:pan-y}
-.page{flex:0 0 25%;width:25%;height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:16px 14px 88px}
+.page{flex:0 0 25%;width:25%;height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:16px 14px 88px;scrollbar-width:none}
+.page::-webkit-scrollbar{width:0;height:0}
+.page.scrolling{scrollbar-width:thin}
+.page.scrolling::-webkit-scrollbar{width:5px}
+.page.scrolling::-webkit-scrollbar-thumb{background:var(--muted);border-radius:3px}
 .app-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .app-title{font-size:21px;font-weight:700}
 .top-btns{display:flex;gap:6px}
@@ -543,16 +547,18 @@ function disableFingerprint(){localStorage.removeItem(FPKEY);toast('已关闭指
 function fpInit(){var has=!!localStorage.getItem(FPKEY);if(has&&window.isSecureContext){fpSupported().then(function(ok){if(ok)$('btnFp').classList.remove('hidden')})}}
 $('btnFp').addEventListener('click',unlockWithFingerprint);
 $('fpToggle').addEventListener('change',function(){if(this.checked){enableFingerprint()}else{disableFingerprint()}});
-var dragP=null;
-function pageStart(e){var el=e.target;if(el.closest('button,input,select,textarea,.cat-cell,.row,.modal,.fab')){dragP=null;return}var t=e.touches[0];dragP={sx:t.clientX,sy:t.clientY,i:pageIndex[activeTab]||0,w:pageWidth(),active:false,lx:t.clientX,lt:Date.now(),vx:0}}
-function pageMove(e){if(!dragP)return;var t=e.touches[0];var dx=t.clientX-dragP.sx,dy=t.clientY-dragP.sy;if(!dragP.active){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8){dragP.active=true;dragP.i=pageIndex[activeTab]||0;dragP.w=pageWidth()}else if(Math.abs(dy)>8){dragP=null;return}else return}var now=Date.now();var dt=now-dragP.lt;if(dt>0){dragP.vx=(t.clientX-dragP.lx)/dt}dragP.lx=t.clientX;dragP.lt=now;var off=dx;if(dragP.i===0&&dx>0){off=dx*0.35}if(dragP.i===3&&dx<0){off=dx*0.35}$('pagesStrip').style.transition='none';$('pagesStrip').style.transform='translateX('+(-dragP.i*dragP.w+off)+'px)'}
-function pageEnd(e){if(!dragP)return;var t=e.changedTouches[0];var dx=t.clientX-dragP.sx;var w=dragP.w;var i=dragP.i;var target=i;if(Math.abs(dx)>w*0.25||Math.abs(dragP.vx)>0.5){if(dx<0&&i<3)target=i+1;else if(dx>0&&i>0)target=i-1}var order=['home','analysis','year','settings'];dragP=null;switchTab(order[target],true)}
+var dragP=null;var suppressClick=false;
+function pageStart(e){var t=e.touches[0];dragP={sx:t.clientX,sy:t.clientY,i:pageIndex[activeTab]||0,w:pageWidth(),active:false,lx:t.clientX,lt:Date.now(),vx:0}}
+function pageMove(e){if(!dragP)return;var t=e.touches[0];var dx=t.clientX-dragP.sx,dy=t.clientY-dragP.sy;if(!dragP.active){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>10){dragP.active=true;suppressClick=true;dragP.i=pageIndex[activeTab]||0;dragP.w=pageWidth()}else if(Math.abs(dy)>10){dragP=null;return}else return}var now=Date.now();var dt=now-dragP.lt;if(dt>0){dragP.vx=(t.clientX-dragP.lx)/dt}dragP.lx=t.clientX;dragP.lt=now;var off=dx;if(dragP.i===0&&dx>0){off=dx*0.35}if(dragP.i===3&&dx<0){off=dx*0.35}$('pagesStrip').style.transition='none';$('pagesStrip').style.transform='translateX('+(-dragP.i*dragP.w+off)+'px)'}
+function pageEnd(e){if(!dragP)return;var t=e.changedTouches[0];var dx=t.clientX-dragP.sx;var w=dragP.w;var i=dragP.i;var active=dragP.active;var target=i;if(active){if(Math.abs(dx)>w*0.25||Math.abs(dragP.vx)>0.5){if(dx<0&&i<3)target=i+1;else if(dx>0&&i>0)target=i-1}var order=['home','analysis','year','settings'];dragP=null;switchTab(order[target],true)}else{dragP=null}setTimeout(function(){suppressClick=false},500)}
 function pageWidth(){var p=$('pages');return p?p.offsetWidth:360}
 var pageIndex={home:0,analysis:1,year:2,settings:3};
 $('pages').addEventListener('touchstart',pageStart,{passive:true});
 $('pages').addEventListener('touchmove',pageMove,{passive:true});
 $('pages').addEventListener('touchend',pageEnd,{passive:true});
 window.addEventListener('resize',function(){var i=pageIndex[activeTab]||0;$('pagesStrip').style.transition='none';$('pagesStrip').style.transform='translateX('+(-i*pageWidth())+'px)'});
+document.addEventListener('click',function(e){if(suppressClick){e.stopPropagation();e.preventDefault();suppressClick=false}},true);
+document.querySelectorAll('.page').forEach(function(pg){pg.addEventListener('scroll',function(){pg.classList.add('scrolling');clearTimeout(pg._st);pg._st=setTimeout(function(){pg.classList.remove('scrolling')},600)})});
 function yearRange(){var cur=parseInt(String(new Date().getFullYear()),10);var min=cur;records.forEach(function(r){var y=parseInt(r.date.slice(0,4),10);if(!isNaN(y)&&y<min)min=y});var sel=parseInt(year,10)||cur;return {min:Math.min(min,sel),max:Math.max(cur,sel)}}
 function renderYearSel(){var sel=$('yearSel');if(!sel)return;var cur=parseInt(String(new Date().getFullYear()),10);var yy=parseInt(year,10);if(isNaN(yy)||yy<1900)year=String(cur);if(yy>cur)year=String(cur);var r=yearRange();var html='';for(var y=r.max;y>=r.min;y--){html+='<option value="'+y+'">'+y+' 年</option>'}sel.innerHTML=html;sel.value=year}
 $('yearSel').addEventListener('change',function(){year=this.value;renderYear()});
