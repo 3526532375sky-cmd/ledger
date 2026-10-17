@@ -24,6 +24,10 @@ html,body{height:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
 .hidden{display:none!important}
 .screen{max-width:600px;margin:0 auto;padding:16px 14px 116px}
+#screen-main{max-width:600px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:0;overflow:hidden}
+.pages{flex:1;overflow:hidden;position:relative;width:100%}
+.pages-strip{display:flex;height:100%;width:400%;transform:translateX(0);will-change:transform;touch-action:pan-y}
+.page{flex:0 0 25%;width:25%;height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:16px 14px 88px}
 .app-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .app-title{font-size:21px;font-weight:700}
 .top-btns{display:flex;gap:6px}
@@ -146,7 +150,9 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
 .yt-row span{flex:1;text-align:right}
 .yt-row span:first-child{flex:0 0 52px;text-align:left;color:var(--muted)}
 .yt-row.yt-head span{color:var(--muted);font-weight:600}
+.yt-row span:not(:first-child){font-weight:700;font-size:15px}
 .year-nav{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px}
+.year-select{font-size:17px;font-weight:700;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:7px 8px;color:var(--text);text-align:center;cursor:pointer;max-width:130px}
 .year-btn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
 .year-btn:active{transform:scale(.94)}
 .year-txt{font-size:18px;font-weight:700;min-width:92px;text-align:center}
@@ -219,7 +225,8 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
 </div>
 
 <div id="screen-main" class="screen hidden">
-  <div id="tab-home" class="tab">
+  <div class="pages" id="pages"><div class="pages-strip" id="pagesStrip">
+  <div id="tab-home" class="page">
     <div class="app-top">
       <h1 class="app-title">📒 我的账本</h1>
       <div class="top-btns"><button class="btn" id="btnLock" title="锁定">🔒</button></div>
@@ -238,7 +245,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
     <div id="monthTree"></div>
   </div>
 
-  <div id="tab-analysis" class="tab hidden">
+  <div id="tab-analysis" class="page">
     <div class="app-top"><h1 class="app-title">📊 分析</h1></div>
     <div class="card goal hidden" id="goalBoxA">
       <div class="g-top"><span>本月结余目标</span><span id="goalTextA"></span></div>
@@ -253,14 +260,14 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
     <div class="card"><div class="section-title">💡 建议</div><div id="advice"></div></div>
   </div>
 
-  <div id="tab-year" class="tab hidden">
+  <div id="tab-year" class="page">
     <div class="app-top"><h1 class="app-title">📅 年度账单</h1></div>
     <div class="year-nav">
       <button class="year-btn" id="prevYear">‹</button>
-      <div class="year-txt" id="yearLabel"></div>
+      <select class="year-select" id="yearSel"></select>
       <button class="year-btn" id="nextYear">›</button>
     </div>
-    <button class="year-today" id="thisYearBtn">回到今年</button>
+    <button class="year-today hidden" id="thisYearBtn">回到今年</button>
     <div class="stat-grid" id="yearStats"></div>
     <div class="card"><div class="section-title">本年 vs 上年</div><div id="yearCompare"></div></div>
     <div class="card"><div class="section-title">全年收支（按月）</div><div class="seg mini" id="yearSeg"><button data-m="both" class="on">收支</button><button data-m="expense">支出</button><button data-m="income">收入</button></div><div id="yearBars"></div></div>
@@ -268,7 +275,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
     <div class="card"><div class="section-title">月度明细</div><div id="yearTable"></div></div>
     <div style="margin-top:6px"><button class="btn" id="btnEye" style="width:100%;padding:12px;font-size:15px">🙈 显示金额</button></div>
   </div>
-  <div id="tab-settings" class="tab hidden">
+  <div id="tab-settings" class="page">
     <div class="app-top"><h1 class="app-title">⚙️ 设置</h1></div>
     <div class="card"><div class="section-title">外观主题</div>
       <div class="seg" id="themeSeg">
@@ -314,6 +321,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
     </div>
   </div>
 
+  </div></div>
   <nav class="tabbar" id="tabbar">
     <button data-tab="home" class="on">📒 记账</button>
     <button data-tab="analysis">📊 分析</button>
@@ -403,7 +411,7 @@ function lockApp(){key=null;records=[];db=null;settings=normalizeSettings(null);
 function doExport(){if(!db){toast('请先解锁');return}var out={app:'jizhangben',v:1,salt:db.salt,iter:db.iter,iv:db.iv,data:db.data,exportedAt:new Date().toISOString()};var blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);var d=new Date();a.download='账本备份-'+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);toast('已导出加密备份')}
 function effectiveTheme(){var t=localStorage.getItem(THEMEKEY)||'auto';if(t==='dark')return 'dark';if(t==='light')return 'light';return (window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
 function applyTheme(){document.documentElement.setAttribute('data-theme',effectiveTheme())}
-function switchTab(t,dir){activeTab=t;['home','analysis','year','settings'].forEach(function(x){$('tab-'+x).classList.toggle('hidden',x!==t)});document.querySelectorAll('#tabbar button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-tab')===t)});if(dir){var tab=$('tab-'+t);tab.classList.remove('slide-next','slide-prev');void tab.offsetWidth;tab.classList.add(dir==='next'?'slide-next':'slide-prev');setTimeout(function(){tab.classList.remove('slide-next','slide-prev')},260)}if(t==='analysis')renderAnalysis();if(t==='year')renderYear();if(t==='settings')renderSettings()}
+function switchTab(t,animate){activeTab=t;var i=pageIndex[t]||0;var strip=$('pagesStrip');strip.style.transition=animate?'transform .3s cubic-bezier(.22,.61,.36,1)':'none';strip.style.transform='translateX('+(-i*pageWidth())+'px)';document.querySelectorAll('#tabbar button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-tab')===t)});if(t==='analysis')renderAnalysis();if(t==='year')renderYear();if(t==='settings')renderSettings()}
 function renderAll(){renderSummary();renderTree();renderCategories();updateGoal();renderQuick()}
 function monthRecords(mk){return records.filter(function(r){return r.date.indexOf(mk)===0})}
 function sumsOf(mk){var e=0,i=0;monthRecords(mk).forEach(function(r){if(r.type==='expense')e+=Number(r.amount);else i+=Number(r.amount)});return {e:e,i:i,b:i-e}}
@@ -444,11 +452,11 @@ function renderCompare(){var cs=sumsOf(cur),ps=sumsOf(prevMonthKey(cur));var dif
 function prevCat(mk,c){var v=0;monthRecords(mk).forEach(function(r){if(r.type==='expense'&&r.category===c)v+=Number(r.amount)});return v}
 function renderAdvice(){var a=[];var cs=sumsOf(cur);var prev=prevMonthKey(cur);var ps=sumsOf(prev);var agg={};monthRecords(cur).forEach(function(r){if(r.type==='expense')agg[r.category]=(agg[r.category]||0)+Number(r.amount)});var total=cs.e;if(total>0){var mc=null,mv=0;Object.keys(agg).forEach(function(c){if(agg[c]>mv){mv=agg[c];mc=c}});if(mc&&mv/total>0.4)a.push('本月「'+mc+'」占支出 '+Math.round(mv/total*100)+'%，偏高，可留意是否必要。');Object.keys(agg).forEach(function(c){var pv=prevCat(prev,c);if(pv>0&&agg[c]>=100&&agg[c]>=pv*1.5)a.push('「'+c+'」本月较上月 +'+Math.round((agg[c]-pv)/pv*100)+'%，增长明显。')});if(ps.e>0&&total>ps.e)a.push('本月总支出较上月 +'+Math.round((total-ps.e)/ps.e*100)+'%。')}if(cs.b<0)a.push('本月已超支（支出 > 收入），结余 '+fmt(cs.b)+'，注意控制。');var g=Number(settings.goal)||0;if(g>0&&cs.b<g)a.push('距本月结余目标 '+fmt(g)+' 还差 '+fmt(g-cs.b)+'。');if(a.length===0)a.push('本月支出稳健，继续保持 👍');$('advice').innerHTML='<ul class="advice">'+a.slice(0,6).map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'}
 function yearRecords(){return records.filter(function(r){return r.date.indexOf(year)===0})}
-function renderYear(){var e=0,i=0;var agg={};yearRecords().forEach(function(r){if(r.type==='expense'){e+=Number(r.amount);agg[r.category]=(agg[r.category]||0)+Number(r.amount)}else i+=Number(r.amount)});var b=i-e;var m=mk();$('yearLabel').textContent=year+' 年';var html='<div class="stat"><div class="stat-l">全年收入</div><div class="stat-v inc'+m+'">'+fmt(i)+'</div></div>'+'<div class="stat"><div class="stat-l">全年支出</div><div class="stat-v exp'+m+'">'+fmt(e)+'</div></div>'+'<div class="stat"><div class="stat-l">全年结余</div><div class="stat-v '+(b>=0?'inc':'exp')+m+'">'+fmt(b)+'</div></div>'+'<div class="stat"><div class="stat-l">月均支出</div><div class="stat-v'+m+'">'+fmt(e/12)+'</div></div>';$('yearStats').innerHTML=html;renderYearBars2();renderYearCats(agg,e);renderYearCompare();renderYearTable();updateEye()}
+function renderYear(){var e=0,i=0;var agg={};yearRecords().forEach(function(r){if(r.type==='expense'){e+=Number(r.amount);agg[r.category]=(agg[r.category]||0)+Number(r.amount)}else i+=Number(r.amount)});var b=i-e;var m=mk();renderYearSel();$('thisYearBtn').classList.toggle('hidden',parseInt(year,10)===parseInt(String(new Date().getFullYear()),10));var html='<div class="stat"><div class="stat-l">全年收入</div><div class="stat-v inc'+m+'">'+fmt(i)+'</div></div>'+'<div class="stat"><div class="stat-l">全年支出</div><div class="stat-v exp'+m+'">'+fmt(e)+'</div></div>'+'<div class="stat"><div class="stat-l">全年结余</div><div class="stat-v '+(b>=0?'inc':'exp')+m+'">'+fmt(b)+'</div></div>'+'<div class="stat"><div class="stat-l">月均支出</div><div class="stat-v'+m+'">'+fmt(e/12)+'</div></div>';$('yearStats').innerHTML=html;renderYearBars2();renderYearCats(agg,e);renderYearCompare();renderYearTable();updateEye()}
 function renderYearBars(){var data=[];var max=0;for(var m=1;m<=12;m++){var s=sumsOf(year+'-'+pad(m));data.push({m:m,e:s.e,i:s.i});max=Math.max(max,s.e,s.i)}if(max===0)max=1;var W=600,H=200,padL=40,padB=24,padT=10;var plotW=W-padL-10,plotH=H-padT-padB;var bw=plotW/12;var html='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-height:210px">';for(var g=0;g<=4;g++){var val=max*g/4;var y=padT+plotH-g*plotH/4;html+='<line x1="'+padL+'" y1="'+y+'" x2="'+(W-10)+'" y2="'+y+'" stroke-width="1" style="stroke:var(--border)"/>';html+='<text x="'+(padL-6)+'" y="'+(y+4)+'" font-size="10" text-anchor="end" style="fill:var(--muted)">'+shortNum(val)+'</text>'}data.forEach(function(x,idx){var cx=padL+idx*bw+bw/2;var he=x.e/max*plotH,hi=x.i/max*plotH;html+='<rect x="'+(cx-bw*0.30)+'" y="'+(padT+plotH-he)+'" width="'+(bw*0.26)+'" height="'+(he>0?he:1)+'" rx="1" style="fill:var(--green)"/>';html+='<rect x="'+(cx+bw*0.04)+'" y="'+(padT+plotH-hi)+'" width="'+(bw*0.26)+'" height="'+(hi>0?hi:1)+'" rx="1" style="fill:var(--red)"/>';if(x.m===1||x.m%2===0||x.m===12){html+='<text x="'+cx+'" y="'+(H-6)+'" font-size="9" text-anchor="middle" style="fill:var(--muted)">'+x.m+'月</text>'}});html+='</svg>';$('yearBars').innerHTML=html}
 function renderYearCats(agg,total){var box=$('yearCats');if(total===0){box.innerHTML='<div class="empty">该年暂无支出</div>';return}var sorted=Object.keys(agg).sort(function(a,b){return agg[b]-agg[a]});var m=mk();box.innerHTML=sorted.map(function(c){var v=agg[c];var pct=Math.round(v/total*100);return '<div class="rank-row"><div class="rank-name">'+esc(c)+'</div><div class="rank-track"><div class="rank-fill" style="width:'+pct+'%"></div></div><div class="rank-val'+m+'">'+fmt(v)+' · '+pct+'%</div></div>'}).join('')}
 function renderYearTable(){var m=mk();var rows='';for(var mm=1;mm<=12;mm++){var s=sumsOf(year+'-'+pad(mm));rows+='<div class="yt-row"><span>'+mm+'月</span><span class="inc'+m+'">'+fmt(s.i)+'</span><span class="exp'+m+'">'+fmt(s.e)+'</span><span class="'+(s.b>=0?'inc':'exp')+m+'">'+fmt(s.b)+'</span></div>'}$('yearTable').innerHTML='<div class="yt-row yt-head"><span>月份</span><span>收入</span><span>支出</span><span>结余</span></div>'+rows}
-function shiftYear(n){year=String(parseInt(year,10)+n);renderYear()}
+function shiftYear(n){var y=parseInt(year,10)+n;var cur=parseInt(String(new Date().getFullYear()),10);if(y>cur)y=cur;if(y<1900)y=1900;year=String(y);renderYear()}
 function doExportCSV(){var lines=[['类型','分类','金额','日期','备注'].join(',')];records.slice().sort(function(a,b){return a.date<b.date?-1:(a.date>b.date?1:0)}).forEach(function(r){var type=r.type==='expense'?'支出':'收入';var note=(r.note||'').replace(/,/g,'，').split(String.fromCharCode(10)).join(' ');lines.push([type,r.category,r.amount,r.date,note].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});var csv=String.fromCharCode(65279)+lines.join(String.fromCharCode(13,10));var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);var d=new Date();a.download='账本数据-'+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'.csv';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);toast('已导出 CSV 数据')}
 function renderQuick(){var box=$('quickBar');var q=settings.quick||[];if(q.length===0){box.innerHTML='';return}box.innerHTML=q.map(function(x,i){return '<button class="qbtn" data-qi="'+i+'">⚡ '+esc(x.name)+' '+fmt(Number(x.amount))+'</button>'}).join('')}
 function quickOpen(x){editingId=null;editingBase=0;type=x.type||'expense';setType(type);var cat=(catsOf(type).indexOf(x.category)>=0)?x.category:catsOf(type)[0];$('editTitle').textContent='记一笔（快捷）';$('btnSave').textContent='保存';$('amountHint').classList.add('hidden');$('amountPrev').classList.add('hidden');$('amount').value=x.amount;$('note').value=x.name||'';$('date').value=todayStr();$('category').value=cat;openModal();setTimeout(function(){$('btnSave').focus()},60)}
@@ -499,7 +507,7 @@ $('btnCancel').addEventListener('click',closeModal);
 $('amount').addEventListener('input',updatePreview);
 $('typeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(b)setType(b.getAttribute('data-type'))});
 $('monthTree').addEventListener('click',function(e){var del=e.target.closest('button[data-act="del"]');if(del){delRecord(del.getAttribute('data-id'));return}var ed=e.target.closest('button[data-act="edit"]');if(ed){startEdit(ed.getAttribute('data-id'));return}var mh=e.target.closest('button[data-mk]');if(mh){var mk=mh.getAttribute('data-mk');openMonths[mk]=!openMonths[mk];renderTree()}});
-$('tabbar').addEventListener('click',function(e){var b=e.target.closest('button');if(b)switchTab(b.getAttribute('data-tab'))});
+$('tabbar').addEventListener('click',function(e){var b=e.target.closest('button');if(b)switchTab(b.getAttribute('data-tab'),true)});
 $('themeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(b)setTheme(b.getAttribute('data-th'))});
 $('btnGoalSave').addEventListener('click',saveGoal);
 $('btnAddExp').addEventListener('click',function(){addCat('expense')});
@@ -529,18 +537,25 @@ $('hideToggle').addEventListener('change',function(){settings.hide=this.checked;
 $('homeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;homeFilter=b.getAttribute('data-m');updateSeg($('homeSeg'),homeFilter);renderTree()});
 function importAesKey(raw){return crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['encrypt','decrypt'])}
 async function fpSupported(){if(!window.isSecureContext)return false;if(!window.PublicKeyCredential||!PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable)return false;try{return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()}catch(e){return false}}
-async function enableFingerprint(){if(!currentPw){toast('请先用密码解锁');renderSettings();return}if(!(await fpSupported())){toast('当前环境不支持指纹（需 HTTPS 部署版 + 设备指纹）');renderSettings();return}var salt=crypto.getRandomValues(new Uint8Array(32));try{var cred=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'我的账本',id:location.hostname},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'fingerprint',displayName:'指纹解锁'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'required'},extensions:{prf:{eval:{first:salt}}},timeout:60000}});var ext=cred.getClientExtensionResults();var out=ext&&ext.prf&&ext.prf.results?ext.prf.results.first:null;if(!out){toast('该浏览器/设备不支持指纹密钥');return}var rawKey=new Uint8Array(out);if(rawKey.length<16){toast('指纹密钥无效');return}var key=await importAesKey(rawKey);var enc=await encryptStr(key,currentPw);localStorage.setItem(FPKEY,JSON.stringify({credId:bufToB64(new Uint8Array(cred.rawId)),salt:bufToB64(salt),iv:enc.iv,data:enc.data}));toast('指纹解锁已开启');renderSettings()}catch(e){toast('开启失败：'+(e&&e.name==='NotAllowedError'?'已取消':(e&&e.message||e)));renderSettings()}}
-async function unlockWithFingerprint(){var raw=localStorage.getItem(FPKEY);if(!raw)return;var fp;try{fp=JSON.parse(raw)}catch(e){return}var salt=b64ToBuf(fp.salt);var credId=b64ToBuf(fp.credId);try{var cred=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{id:credId,type:'public-key'}],userVerification:'required',extensions:{prf:{eval:{first:salt}}},timeout:60000}});var ext=cred.getClientExtensionResults();var out=ext&&ext.prf&&ext.prf.results?ext.prf.results.first:null;if(!out){toast('指纹验证失败');return}var key=await importAesKey(new Uint8Array(out));var pw=await decryptStr(key,fp.iv,fp.data);await unlock(pw)}catch(e){toast('指纹验证失败')}}
+async function enableFingerprint(){if(!currentPw){toast('请先用密码解锁');renderSettings();return}if(!location.hostname){toast('请在 HTTPS 部署版使用指纹');renderSettings();return}if(!(await fpSupported())){toast('当前环境不支持指纹（需 HTTPS 部署版 + 设备指纹）');renderSettings();return}var salt=crypto.getRandomValues(new Uint8Array(32));try{var cred=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'我的账本',id:location.hostname},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'fingerprint',displayName:'指纹解锁'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'required'},extensions:{prf:{eval:{first:salt}}},timeout:20000}});var ext=cred.getClientExtensionResults();var out=ext&&ext.prf&&ext.prf.results?ext.prf.results.first:null;if(!out){toast('该浏览器/设备不支持指纹密钥');return}var rawKey=new Uint8Array(out);if(rawKey.length<16){toast('指纹密钥无效');return}var key=await importAesKey(rawKey);var enc=await encryptStr(key,currentPw);localStorage.setItem(FPKEY,JSON.stringify({credId:bufToB64(new Uint8Array(cred.rawId)),salt:bufToB64(salt),iv:enc.iv,data:enc.data}));toast('指纹解锁已开启');renderSettings()}catch(e){toast('开启失败：'+(e&&e.name==='NotAllowedError'?'已取消':(e&&e.message||e)));renderSettings()}}
+async function unlockWithFingerprint(){var raw=localStorage.getItem(FPKEY);if(!raw)return;var fp;try{fp=JSON.parse(raw)}catch(e){return}var salt=b64ToBuf(fp.salt);var credId=b64ToBuf(fp.credId);try{var cred=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{id:credId,type:'public-key'}],userVerification:'required',extensions:{prf:{eval:{first:salt}}},timeout:20000}});var ext=cred.getClientExtensionResults();var out=ext&&ext.prf&&ext.prf.results?ext.prf.results.first:null;if(!out){toast('指纹验证失败');return}var key=await importAesKey(new Uint8Array(out));var pw=await decryptStr(key,fp.iv,fp.data);await unlock(pw)}catch(e){toast('指纹验证失败')}}
 function disableFingerprint(){localStorage.removeItem(FPKEY);toast('已关闭指纹解锁');renderSettings()}
 function fpInit(){var has=!!localStorage.getItem(FPKEY);if(has&&window.isSecureContext){fpSupported().then(function(ok){if(ok)$('btnFp').classList.remove('hidden')})}}
 $('btnFp').addEventListener('click',unlockWithFingerprint);
 $('fpToggle').addEventListener('change',function(){if(this.checked){enableFingerprint()}else{disableFingerprint()}});
-var swipe=null;
-function swipeStart(e){var el=e.target;if(el.closest('button,input,select,textarea,.cat-cell,.row,.modal,.fab')){swipe=null;return}var t=e.touches[0];swipe={x:t.clientX,y:t.clientY}}
-function swipeEnd(e){if(!swipe)return;var t=e.changedTouches[0];var dx=t.clientX-swipe.x,dy=t.clientY-swipe.y;swipe=null;if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.4){var order=['home','analysis','year','settings'];var i=order.indexOf(activeTab);if(dx<0){if(i<order.length-1)switchTab(order[i+1],'next');else bounceEdge('next')}else{if(i>0)switchTab(order[i-1],'prev');else bounceEdge('prev')}}}
-function bounceEdge(d){var tab=$('tab-'+activeTab);tab.classList.remove('edge-next','edge-prev');void tab.offsetWidth;tab.classList.add(d==='next'?'edge-next':'edge-prev')}
-$('screen-main').addEventListener('touchstart',swipeStart,{passive:true});
-$('screen-main').addEventListener('touchend',swipeEnd,{passive:true});
+var dragP=null;
+function pageStart(e){var el=e.target;if(el.closest('button,input,select,textarea,.cat-cell,.row,.modal,.fab')){dragP=null;return}var t=e.touches[0];dragP={sx:t.clientX,sy:t.clientY,i:pageIndex[activeTab]||0,w:pageWidth(),active:false,lx:t.clientX,lt:Date.now(),vx:0}}
+function pageMove(e){if(!dragP)return;var t=e.touches[0];var dx=t.clientX-dragP.sx,dy=t.clientY-dragP.sy;if(!dragP.active){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8){dragP.active=true;dragP.i=pageIndex[activeTab]||0;dragP.w=pageWidth()}else if(Math.abs(dy)>8){dragP=null;return}else return}var now=Date.now();var dt=now-dragP.lt;if(dt>0){dragP.vx=(t.clientX-dragP.lx)/dt}dragP.lx=t.clientX;dragP.lt=now;var off=dx;if(dragP.i===0&&dx>0){off=dx*0.35}if(dragP.i===3&&dx<0){off=dx*0.35}$('pagesStrip').style.transition='none';$('pagesStrip').style.transform='translateX('+(-dragP.i*dragP.w+off)+'px)'}
+function pageEnd(e){if(!dragP)return;var t=e.changedTouches[0];var dx=t.clientX-dragP.sx;var w=dragP.w;var i=dragP.i;var target=i;if(Math.abs(dx)>w*0.25||Math.abs(dragP.vx)>0.5){if(dx<0&&i<3)target=i+1;else if(dx>0&&i>0)target=i-1}var order=['home','analysis','year','settings'];dragP=null;switchTab(order[target],true)}
+function pageWidth(){var p=$('pages');return p?p.offsetWidth:360}
+var pageIndex={home:0,analysis:1,year:2,settings:3};
+$('pages').addEventListener('touchstart',pageStart,{passive:true});
+$('pages').addEventListener('touchmove',pageMove,{passive:true});
+$('pages').addEventListener('touchend',pageEnd,{passive:true});
+window.addEventListener('resize',function(){var i=pageIndex[activeTab]||0;$('pagesStrip').style.transition='none';$('pagesStrip').style.transform='translateX('+(-i*pageWidth())+'px)'});
+function yearRange(){var cur=parseInt(String(new Date().getFullYear()),10);var min=cur;records.forEach(function(r){var y=parseInt(r.date.slice(0,4),10);if(!isNaN(y)&&y<min)min=y});var sel=parseInt(year,10)||cur;return {min:Math.min(min,sel),max:Math.max(cur,sel)}}
+function renderYearSel(){var sel=$('yearSel');if(!sel)return;var cur=parseInt(String(new Date().getFullYear()),10);var yy=parseInt(year,10);if(isNaN(yy)||yy<1900)year=String(cur);if(yy>cur)year=String(cur);var r=yearRange();var html='';for(var y=r.max;y>=r.min;y--){html+='<option value="'+y+'">'+y+' 年</option>'}sel.innerHTML=html;sel.value=year}
+$('yearSel').addEventListener('change',function(){year=this.value;renderYear()});
 if(!window.crypto||!crypto.subtle){$('cryptoWarn').classList.remove('hidden')}
 if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){})})}
 try{var mq=window.matchMedia('(prefers-color-scheme: dark)');if(mq.addEventListener)mq.addEventListener('change',function(){if((localStorage.getItem(THEMEKEY)||'auto')==='auto')applyTheme()})}catch(e){}
