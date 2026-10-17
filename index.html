@@ -223,7 +223,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
   <div class="card">
     <div class="field"><label>主密码</label><input class="input" type="password" id="unlockPw" placeholder="输入主密码解锁"></div>
     <button class="btn btn-primary" style="width:100%" id="btnUnlock">解锁</button>
-    <p class="center muted" style="margin-top:12px"><a class="link" id="btnReset">忘记密码？清除本机数据重新开始</a></p>
+    <p class="center muted" style="margin-top:12px"><a class="link" id="btnReset">清除本机数据（需验证密码）</a></p>
   </div>
 </div>
 
@@ -364,6 +364,17 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.5}
   </div>
 </div>
 
+<div id="clearModal" class="modal hidden">
+  <div class="modal-box">
+    <h3 style="margin-bottom:12px">清除本机数据</h3>
+    <p class="note-text" style="margin-bottom:10px">此操作会删除本机所有加密账目且不可恢复，请输入主密码确认。</p>
+    <div class="field"><label>主密码</label><input class="input" type="password" id="clearPw" placeholder="输入主密码"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-danger" style="flex:1" id="btnClearConfirm">确认清除</button>
+      <button class="btn" id="btnClearCancel">取消</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <script>
 (function(){
@@ -485,13 +496,17 @@ function removeCat(t,c){settings.customCats[t]=settings.customCats[t].filter(fun
 function setTheme(t){localStorage.setItem(THEMEKEY,t);applyTheme();renderSettings()}
 function saveGoal(){var v=parseFloat($('goalInput').value);v=isNaN(v)||v<0?0:v;settings.goal=v;saveDb().then(function(){toast('目标已保存');renderSettings();refresh()})}
 function doImportWith(fileEl,pwEl){var f=fileEl.files&&fileEl.files[0];var p=pwEl.value;if(!f){toast('请选择备份文件');return}if(!p){toast('请输入主密码');return}fileEl.value='';importBackup(f,p).then(function(){toast('导入成功');$('importModal').classList.add('hidden');enterApp()}).catch(function(err){toast(err.message||'导入失败')})}
-function confirmReset(){if(confirm('将清除本机加密数据并重新开始，确定吗？')){localStorage.removeItem(LSKEY);location.reload()}}
+function openClearModal(){$('clearPw').value='';$('clearModal').classList.remove('hidden');setTimeout(function(){$('clearPw').focus()},60)}
+function verifyPassword(pw){var raw=localStorage.getItem(LSKEY);if(!raw)return Promise.resolve(true);var d2=JSON.parse(raw);return deriveKey(pw,d2.salt,d2.iter).then(function(k){return decryptStr(k,d2.iv,d2.data).then(function(){return true})}).catch(function(){return false})}
+function confirmClear(){var pw=$('clearPw').value;if(!pw){toast('请输入密码');return}verifyPassword(pw).then(function(ok){if(ok){localStorage.removeItem(LSKEY);location.reload()}else{toast('密码错误')}})}
 $('btnSetup').addEventListener('click',function(){var p=$('setupPw').value,p2=$('setupPw2').value;if(p.length<6){toast('密码至少 6 位');return}if(p!==p2){toast('两次输入不一致');return}createDb(p).catch(function(){toast('创建失败')})});
 $('setupPw2').addEventListener('keydown',function(e){if(e.key==='Enter')$('btnSetup').click()});
 $('btnUnlock').addEventListener('click',function(){var p=$('unlockPw').value;if(!p){toast('请输入密码');return}unlock(p).catch(function(){toast('密码错误')})});
 $('unlockPw').addEventListener('keydown',function(e){if(e.key==='Enter')$('btnUnlock').click()});
-$('btnReset').addEventListener('click',confirmReset);
-$('btnReset2').addEventListener('click',confirmReset);
+$('btnReset').addEventListener('click',openClearModal);
+$('btnReset2').addEventListener('click',openClearModal);
+$('btnClearConfirm').addEventListener('click',confirmClear);
+$('btnClearCancel').addEventListener('click',function(){$('clearModal').classList.add('hidden');$('clearPw').value=''});
 $('btnLock').addEventListener('click',lockApp);
 $('btnExport').addEventListener('click',doExport);
 $('btnImportMain').addEventListener('click',function(){$('importModal').classList.remove('hidden')});
